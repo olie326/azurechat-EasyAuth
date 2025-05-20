@@ -65,13 +65,15 @@ var privateEndpointSpecs = [
 ]
 
 // specified separately so that we can ensure the private DNS zones are created before these private endpoints
-var privateEndpointSpecs_noDNSZone = [
-  {
-    serviceId: openai_dalle_id
-    dnsZoneName: 'privatelink.openai.azure.com'
-    groupId: 'account'
-  }
-]
+var privateEndpointSpecs_noDNSZone = !empty(openai_dalle_id)
+  ? [
+      {
+        serviceId: openai_dalle_id
+        dnsZoneName: 'privatelink.openai.azure.com'
+        groupId: 'account'
+      }
+    ]
+  : []
 
 resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2021-08-01' = {
   name: toLower('${name}-nsg-${resourceToken}')

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -6,12 +6,12 @@ import { useCallback } from "react";
 type Page = "extensions" | "persona" | "prompt" | "chat" | "settings";
 
 export const useRedirectToPage = () => {
-    const router = useRouter();
-    const callback = (path: Page, refresh = true) => {
-        if (refresh) {
-            router.refresh();
-        }
-        router.push(`/${path}`);
+  const router = useRouter();
+  const callback = (path: Page, refresh = true) => {
+    router.push(`/${path}`);
+    if (refresh) {
+      router.refresh();
     }
-    return useCallback(callback, [router]);
+  };
+  return useCallback(callback, [router]);
 };

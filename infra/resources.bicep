@@ -23,11 +23,11 @@ param dalleDeploymentName string
 param dalleModelName string
 param dalleApiVersion string
 
-param speechServiceSkuName string = 'F0'
+param speechServiceSkuName string = 'S0'
 
-param formRecognizerSkuName string = 'F0'
+param formRecognizerSkuName string = 'S0'
 
-param searchServiceSkuName string = 'free'
+param searchServiceSkuName string = 'standard'
 param searchServiceIndexName string = 'azure-chat'
 
 param storageServiceSku object
@@ -85,12 +85,12 @@ module privateEndpoints 'private_endpoints_core.bicep' = if (usePrivateEndpoints
     resourceToken: resourceToken
     tags: tags
     cosmos_id: cosmosDbAccount.id
-    openai_id: ''
-    openai_dalle_id: ''
-    form_recognizer_id: ''
+    openai_id: enableOpenAI ? openai.outputs.azureopenai_id : ''
+    form_recognizer_id: enableAzureAI ? ai.outputs.formRecognizer_id : ''
+    search_service_id: enableAzureAI ? ai.outputs.searchService_id : ''
+    openai_dalle_id: enableDalle ? dalle.outputs.azureopenai_dalle_id : ''
     storage_id: storage.id
     keyVault_id: kv.id
-    search_service_id: ''
     privateEndpointVNetPrefix: privateEndpointVNetPrefix
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     appServiceBackendSubnetAddressPrefix: appServiceBackendSubnetAddressPrefix
@@ -157,7 +157,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
     reserved: true
   }
   sku: {
-    name: 'B1'
+    name: 'B3'
     tier: 'Basic'
     capacity: 1
   }
@@ -319,8 +319,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
-    // virtualNetworkSubnetId: usePrivateEndpoints ? privateEndpoints.outputs.appServiceSubnetId : null
-    virtualNetworkSubnetId: null
+    virtualNetworkSubnetId: usePrivateEndpoints ? privateEndpoints.outputs.appServiceSubnetId : null
     vnetRouteAllEnabled: usePrivateEndpoints ? false : null
     siteConfig: {
       linuxFxVersion: 'NODE|22-lts'
@@ -517,7 +516,7 @@ var searchIndexDataContributorRoleId = '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
 var targetUserPrincipal = webApp.identity.principalId
 // These are only deployed if local authentication has been disabled in the parameters
 
-module openaiRoles 'modules/openai_roles.bicep' = if (enableOpenAI && !disableLocalAuth) {
+module openaiRoles 'modules/openai_roles.bicep' = if (enableOpenAI && disableLocalAuth) {
   name: 'openai-roles'
   params: {
     azureOpenAIName: openai.outputs.openai_name

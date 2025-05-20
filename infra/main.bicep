@@ -69,7 +69,7 @@ param dalleLocation string
 param openAISku string = 'S0'
 param openAIApiVersion string = '2024-08-01-preview'
 
-param chatGptDeploymentCapacity int = 30
+param chatGptDeploymentCapacity int = 20
 param chatGptDeploymentName string = 'gpt-4o'
 param chatGptModelName string = 'gpt-4o'
 param chatGptModelVersion string = '2024-05-13'
@@ -82,9 +82,9 @@ param dalleDeploymentName string = 'dall-e-3'
 param dalleModelName string = 'dall-e-3'
 param dalleApiVersion string = '2023-12-01-preview'
 
-param formRecognizerSkuName string = 'F0'
+param formRecognizerSkuName string = 'S0'
 param searchServiceIndexName string = 'azure-chat'
-param searchServiceSkuName string = 'free'
+param searchServiceSkuName string = 'standard'
 
 // TODO: define good default Sku and settings for storage account
 param storageServiceSku object = { name: 'Standard_LRS' }
