@@ -16,6 +16,7 @@ import {
   ChatThreadModel,
 } from "./chat-services/models";
 import MessageContent from "./message-content";
+import { useUser } from "../globals/providers";
 
 interface ChatPageProps {
   messages: Array<ChatMessageModel>;
@@ -25,15 +26,15 @@ interface ChatPageProps {
 }
 
 export const ChatPage: FC<ChatPageProps> = (props) => {
-  const { data: session } = useSession();
+  const user = useUser();
 
   useEffect(() => {
     chatStore.initChatSession({
       chatThread: props.chatThread,
       messages: props.messages,
-      userName: session?.user?.name!,
+      userName: user?.name!,
     });
-  }, [props.messages, session?.user?.name, props.chatThread]);
+  }, [props.messages, user?.name, props.chatThread]);
 
   const { messages, loading } = useChat();
 
@@ -60,11 +61,8 @@ export const ChatPage: FC<ChatPageProps> = (props) => {
                   navigator.clipboard.writeText(message.content);
                 }}
                 profilePicture={
-                  message.role === "assistant"
-                    ? "/ai-icon.png"
-                    : session?.user?.image
-                }
-              >
+                  message.role === "assistant" ? "/ai-icon.png" : user?.image
+                }>
                 <MessageContent message={message} />
               </ChatMessageArea>
             );

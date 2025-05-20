@@ -1,6 +1,10 @@
 param name string = 'azurechat-demo'
 param resourceToken string
 
+param enableOpenAI bool
+param enableDalle bool = false
+param enableAzureAI bool
+
 param openai_api_version string
 
 param openAiLocation string
@@ -19,11 +23,11 @@ param dalleDeploymentName string
 param dalleModelName string
 param dalleApiVersion string
 
-param speechServiceSkuName string = 'S0'
+param speechServiceSkuName string = 'F0'
 
-param formRecognizerSkuName string = 'S0'
+param formRecognizerSkuName string = 'F0'
 
-param searchServiceSkuName string = 'standard'
+param searchServiceSkuName string = 'free'
 param searchServiceIndexName string = 'azure-chat'
 
 param storageServiceSku object
@@ -31,8 +35,8 @@ param storageServiceImageContainerName string
 
 param location string = resourceGroup().location
 
-param disableLocalAuth bool = true
-param usePrivateEndpoints bool = true
+param disableLocalAuth bool
+param usePrivateEndpoints bool = false
 
 @secure()
 param nextAuthHash string = uniqueString(newGuid())
@@ -73,30 +77,6 @@ var databaseName = 'chat'
 var historyContainerName = 'history'
 var configContainerName = 'config'
 
-var llmDeployments = [
-  {
-    name: chatGptDeploymentName
-    model: {
-      format: 'OpenAI'
-      name: chatGptModelName
-      version: chatGptModelVersion
-    }
-    sku: {
-      name: 'GlobalStandard'
-      capacity: chatGptDeploymentCapacity
-    }
-  }
-  {
-    name: embeddingDeploymentName
-    model: {
-      format: 'OpenAI'
-      name: embeddingModelName
-      version: '2'
-    }
-    capacity: embeddingDeploymentCapacity
-  }
-]
-
 module privateEndpoints 'private_endpoints_core.bicep' = if (usePrivateEndpoints) {
   name: 'private-endpoints'
   params: {
@@ -105,15 +85,67 @@ module privateEndpoints 'private_endpoints_core.bicep' = if (usePrivateEndpoints
     resourceToken: resourceToken
     tags: tags
     cosmos_id: cosmosDbAccount.id
-    openai_id: azureopenai.id
-    openai_dalle_id: azureopenaidalle.id
-    form_recognizer_id: formRecognizer.id
+    openai_id: ''
+    openai_dalle_id: ''
+    form_recognizer_id: ''
     storage_id: storage.id
     keyVault_id: kv.id
-    search_service_id: searchService.id
+    search_service_id: ''
     privateEndpointVNetPrefix: privateEndpointVNetPrefix
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     appServiceBackendSubnetAddressPrefix: appServiceBackendSubnetAddressPrefix
+  }
+}
+
+module openai 'modules/openai.bicep' = if (enableOpenAI) {
+  name: 'openai'
+  params: {
+    name: name
+    resourceToken: resourceToken
+    tags: tags
+    openAiLocation: openAiLocation
+    openAiSkuName: openAiSkuName
+    chatGptDeploymentName: chatGptDeploymentName
+    chatGptDeploymentCapacity: chatGptDeploymentCapacity
+    chatGptModelName: chatGptModelName
+    chatGptModelVersion: chatGptModelVersion
+    embeddingDeploymentName: embeddingDeploymentName
+    embeddingDeploymentCapacity: embeddingDeploymentCapacity
+    embeddingModelName: embeddingModelName
+    keyVaultName: keyVaultName
+    disableLocalAuth: disableLocalAuth
+  }
+}
+
+module dalle 'modules/dalle.bicep' = if (enableDalle) {
+  name: 'dalle'
+  params: {
+    name: name
+    resourceToken: resourceToken
+    tags: tags
+    dalleDeploymentName: dalleDeploymentName
+    dalleDeploymentCapacity: dalleDeploymentCapacity
+    dalleModelName: dalleModelName
+    dalleLocation: dalleLocation
+    keyVaultName: keyVaultName
+    openAiSkuName: openAiSkuName
+    disableLocalAuth: disableLocalAuth
+  }
+}
+
+module ai 'modules/azure_ai.bicep' = if (enableAzureAI) {
+  name: 'ai'
+  params: {
+    tags: tags
+    location: location
+    formRecognizerSkuName: formRecognizerSkuName
+    searchServiceSkuName: searchServiceSkuName
+    disableLocalAuth: disableLocalAuth
+    form_recognizer_name: form_recognizer_name
+    keyVaultName: keyVaultName
+    search_name: search_name
+    speech_service_name: speech_service_name
+    speechServiceSkuName: speechServiceSkuName
   }
 }
 
@@ -125,21 +157,69 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
     reserved: true
   }
   sku: {
-    name: 'P0v3'
-    tier: 'Premium0V3'
-    size: 'P0v3'
-    family: 'Pv3'
+    name: 'B1'
+    tier: 'Basic'
     capacity: 1
   }
   kind: 'linux'
 }
+
+var appSettingsOpenAICommon = enableOpenAI
+  ? [
+      {
+        name: 'AZURE_OPENAI_API_INSTANCE_NAME'
+        value: openai_name
+      }
+      {
+        name: 'AZURE_OPENAI_API_DEPLOYMENT_NAME'
+        value: chatGptDeploymentName
+      }
+      {
+        name: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME'
+        value: embeddingDeploymentName
+      }
+      {
+        name: 'AZURE_OPENAI_API_VERSION'
+        value: openai_api_version
+      }
+    ]
+  : []
+
+var appSettingsDalleCommon = enableDalle
+  ? [
+      {
+        name: 'AZURE_OPENAI_DALLE_API_INSTANCE_NAME'
+        value: openai_dalle_name
+      }
+      {
+        name: 'AZURE_OPENAI_DALLE_API_DEPLOYMENT_NAME'
+        value: dalleDeploymentName
+      }
+      {
+        name: 'AZURE_OPENAI_DALLE_API_VERSION'
+        value: dalleApiVersion
+      }
+    ]
+  : []
+
+var appSettingsAICommon = enableAzureAI
+  ? [
+      {
+        name: 'AZURE_SEARCH_NAME'
+        value: search_name
+      }
+      {
+        name: 'AZURE_SEARCH_INDEX_NAME'
+        value: searchServiceIndexName
+      }
+    ]
+  : []
 
 var appSettingsCommon = [
   {
     name: 'USE_MANAGED_IDENTITIES'
     value: disableLocalAuth
   }
-
   {
     name: 'AZURE_KEY_VAULT_NAME'
     value: keyVaultName
@@ -147,34 +227,6 @@ var appSettingsCommon = [
   {
     name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
     value: 'true'
-  }
-  {
-    name: 'AZURE_OPENAI_API_INSTANCE_NAME'
-    value: openai_name
-  }
-  {
-    name: 'AZURE_OPENAI_API_DEPLOYMENT_NAME'
-    value: chatGptDeploymentName
-  }
-  {
-    name: 'AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME'
-    value: embeddingDeploymentName
-  }
-  {
-    name: 'AZURE_OPENAI_API_VERSION'
-    value: openai_api_version
-  }
-  {
-    name: 'AZURE_OPENAI_DALLE_API_INSTANCE_NAME'
-    value: openai_dalle_name
-  }
-  {
-    name: 'AZURE_OPENAI_DALLE_API_DEPLOYMENT_NAME'
-    value: dalleDeploymentName
-  }
-  {
-    name: 'AZURE_OPENAI_DALLE_API_VERSION'
-    value: dalleApiVersion
   }
   {
     name: 'NEXTAUTH_SECRET'
@@ -189,59 +241,76 @@ var appSettingsCommon = [
     value: cosmosDbAccount.properties.documentEndpoint
   }
   {
-    name: 'AZURE_SEARCH_NAME'
-    value: search_name
-  }
-  {
-    name: 'AZURE_SEARCH_INDEX_NAME'
-    value: searchServiceIndexName
-  }
-  {
-    name: 'AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT'
-    value: 'https://${form_recognizer_name}.cognitiveservices.azure.com/'
-  }
-  {
-    name: 'AZURE_SPEECH_REGION'
-    value: location
-  }
-  {
-    name: 'AZURE_SPEECH_KEY'
-    value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_SPEECH_KEY.name})'
-  }
-  {
     name: 'AZURE_STORAGE_ACCOUNT_NAME'
     value: storage_name
   }
 ]
 
+var appSettingsCommonAll = concat(
+  appSettingsCommon,
+  appSettingsOpenAICommon,
+  appSettingsDalleCommon,
+  appSettingsAICommon
+)
+var openaiSecretName = enableOpenAI ? openai.outputs.openaiSecretName : ''
+var openaiDalleSecretName = enableDalle ? dalle.outputs.openaiDalleSecretName : ''
+var searchServiceSecretName = enableAzureAI ? ai.outputs.searchServiceSecretName : ''
+var formRecognizerSecretName = enableAzureAI ? ai.outputs.formRecognizerSecretName : ''
+
+// var openaiSecretName = ''
+// var openaiDalleSecretName = ''
+// var searchServiceSecretName = ''
+// var formRecognizerSecretName = ''
+var appSettingsWithLocalAuthOpenAI = enableOpenAI && !disableLocalAuth
+  ? [
+      {
+        name: 'AZURE_OPENAI_API_KEY'
+        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${openaiSecretName})'
+      }
+    ]
+  : []
+
+var appSettingsWithLocalAuthDalle = enableDalle && !disableLocalAuth
+  ? [
+      {
+        name: 'AZURE_OPENAI_DALLE_API_KEY'
+        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${openaiDalleSecretName})'
+      }
+    ]
+  : []
+
+var appSettingsWithLocalAuthAI = enableAzureAI && !disableLocalAuth
+  ? [
+      {
+        name: 'AZURE_SEARCH_API_KEY'
+        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${searchServiceSecretName})'
+      }
+      {
+        name: 'AZURE_DOCUMENT_INTELLIGENCE_KEY'
+        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${formRecognizerSecretName})'
+      }
+    ]
+  : []
+
 var appSettingsWithLocalAuth = disableLocalAuth
   ? []
   : [
       {
-        name: 'AZURE_OPENAI_API_KEY'
-        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_API_KEY.name})'
-      }
-      {
-        name: 'AZURE_OPENAI_DALLE_API_KEY'
-        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_DALLE_API_KEY.name})'
-      }
-      {
         name: 'AZURE_COSMOSDB_KEY'
         value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_COSMOSDB_KEY.name})'
-      }
-      {
-        name: 'AZURE_SEARCH_API_KEY'
-        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_SEARCH_API_KEY.name})'
-      }
-      {
-        name: 'AZURE_DOCUMENT_INTELLIGENCE_KEY'
-        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_DOCUMENT_INTELLIGENCE_KEY.name})'
       }
       {
         name: 'AZURE_STORAGE_ACCOUNT_KEY'
         value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_STORAGE_ACCOUNT_KEY.name})'
       }
     ]
+
+var appSettingsWithLocalAuthAll = concat(
+  appSettingsWithLocalAuth,
+  appSettingsWithLocalAuthOpenAI,
+  appSettingsWithLocalAuthDalle,
+  appSettingsWithLocalAuthAI
+)
 
 resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   name: webapp_name
@@ -250,7 +319,8 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
-    virtualNetworkSubnetId: usePrivateEndpoints ? privateEndpoints.outputs.appServiceSubnetId : null
+    // virtualNetworkSubnetId: usePrivateEndpoints ? privateEndpoints.outputs.appServiceSubnetId : null
+    virtualNetworkSubnetId: null
     vnetRouteAllEnabled: usePrivateEndpoints ? false : null
     siteConfig: {
       linuxFxVersion: 'NODE|22-lts'
@@ -258,7 +328,7 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
       appCommandLine: 'next start'
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
-      appSettings: concat(appSettingsCommon, appSettingsWithLocalAuth)
+      appSettings: concat(appSettingsCommonAll, appSettingsWithLocalAuthAll)
     }
   }
   identity: { type: 'SystemAssigned' }
@@ -323,22 +393,6 @@ resource kv 'Microsoft.KeyVault/vaults@2024-12-01-preview' = {
     publicNetworkAccess: usePrivateEndpoints ? 'Disabled' : 'Enabled'
   }
 
-  resource AZURE_OPENAI_API_KEY 'secrets' = if (!disableLocalAuth) {
-    name: 'AZURE-OPENAI-API-KEY'
-    properties: {
-      contentType: 'text/plain'
-      value: azureopenai.listKeys().key1
-    }
-  }
-
-  resource AZURE_OPENAI_DALLE_API_KEY 'secrets' = if (!disableLocalAuth) {
-    name: 'AZURE-OPENAI-DALLE-API-KEY'
-    properties: {
-      contentType: 'text/plain'
-      value: azureopenaidalle.listKeys().key1
-    }
-  }
-
   resource NEXTAUTH_SECRET 'secrets' = {
     name: 'NEXTAUTH-SECRET'
     properties: {
@@ -352,30 +406,6 @@ resource kv 'Microsoft.KeyVault/vaults@2024-12-01-preview' = {
     properties: {
       contentType: 'text/plain'
       value: cosmosDbAccount.listKeys().secondaryMasterKey
-    }
-  }
-
-  resource AZURE_DOCUMENT_INTELLIGENCE_KEY 'secrets' = if (!disableLocalAuth) {
-    name: 'AZURE-DOCUMENT-INTELLIGENCE-KEY'
-    properties: {
-      contentType: 'text/plain'
-      value: formRecognizer.listKeys().key1
-    }
-  }
-
-  resource AZURE_SPEECH_KEY 'secrets' = {
-    name: 'AZURE-SPEECH-KEY'
-    properties: {
-      contentType: 'text/plain'
-      value: speechService.listKeys().key1
-    }
-  }
-
-  resource AZURE_SEARCH_API_KEY 'secrets' = if (!disableLocalAuth) {
-    name: 'AZURE-SEARCH-API-KEY'
-    properties: {
-      contentType: 'text/plain'
-      value: searchService.listAdminKeys().secondaryKey
     }
   }
 
@@ -449,114 +479,6 @@ resource configContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
   }
 }
 
-resource formRecognizer 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: form_recognizer_name
-  location: location
-  tags: tags
-  kind: 'FormRecognizer'
-  properties: {
-    customSubDomainName: form_recognizer_name
-    publicNetworkAccess: usePrivateEndpoints ? 'Disabled' : 'Enabled'
-    disableLocalAuth: disableLocalAuth
-  }
-  sku: {
-    name: formRecognizerSkuName
-  }
-}
-
-resource searchService 'Microsoft.Search/searchServices@2022-09-01' = {
-  name: search_name
-  location: location
-  tags: tags
-  properties: {
-    partitionCount: 1
-    publicNetworkAccess: usePrivateEndpoints ? 'disabled' : 'enabled'
-    replicaCount: 1
-    disableLocalAuth: disableLocalAuth
-  }
-  sku: {
-    name: searchServiceSkuName
-  }
-}
-
-resource azureopenai 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: openai_name
-  location: openAiLocation
-  tags: tags
-  kind: 'OpenAI'
-  properties: {
-    customSubDomainName: openai_name
-    publicNetworkAccess: usePrivateEndpoints ? 'Disabled' : 'Enabled'
-    disableLocalAuth: disableLocalAuth
-  }
-  sku: {
-    name: openAiSkuName
-  }
-}
-
-@batchSize(1)
-resource llmdeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = [
-  for deployment in llmDeployments: {
-    parent: azureopenai
-    name: deployment.name
-    properties: {
-      model: deployment.model
-      /*raiPolicyName: contains(deployment, 'raiPolicyName') ? deployment.raiPolicyName : null*/
-    }
-    sku: contains(deployment, 'sku')
-      ? deployment.sku
-      : {
-          name: 'Standard'
-          capacity: deployment.capacity
-        }
-  }
-]
-
-resource azureopenaidalle 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: openai_dalle_name
-  location: dalleLocation
-  tags: tags
-  kind: 'OpenAI'
-  properties: {
-    customSubDomainName: openai_dalle_name
-    publicNetworkAccess: usePrivateEndpoints ? 'Disabled' : 'Enabled'
-    disableLocalAuth: disableLocalAuth
-  }
-  sku: {
-    name: openAiSkuName
-  }
-
-  resource dalleDeployment 'deployments' = {
-    name: dalleDeploymentName
-    properties: {
-      model: {
-        format: 'OpenAI'
-        name: dalleModelName
-      }
-    }
-    sku: {
-      name: 'Standard'
-      capacity: dalleDeploymentCapacity
-    }
-  }
-}
-
-resource speechService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
-  name: speech_service_name
-  location: location
-  tags: tags
-  kind: 'SpeechServices'
-  properties: {
-    customSubDomainName: speech_service_name
-    // called from the browser so public endpoint is required
-    publicNetworkAccess: 'Enabled'
-    /* TODO: disableLocalAuth: disableLocalAuth*/
-  }
-  sku: {
-    name: speechServiceSkuName
-  }
-}
-
 // TODO: define good default Sku and settings for storage account
 resource storage 'Microsoft.Storage/storageAccounts@2024-01-01' = {
   name: storage_name
@@ -595,6 +517,30 @@ var searchIndexDataContributorRoleId = '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
 var targetUserPrincipal = webApp.identity.principalId
 // These are only deployed if local authentication has been disabled in the parameters
 
+module openaiRoles 'modules/openai_roles.bicep' = if (enableOpenAI && !disableLocalAuth) {
+  name: 'openai-roles'
+  params: {
+    azureOpenAIName: openai.outputs.openai_name
+    targetUserPrincipal: targetUserPrincipal
+    cognitiveServicesContributorRoleId: cognitiveServicesContributorRoleId
+    cognitiveServicesOpenAIContributorRoleId: cognitiveServicesOpenAIContributorRoleId
+    disableLocalAuth: disableLocalAuth
+  }
+}
+
+module azureAIRoles 'modules/azure_ai_roles.bicep' = if (enableAzureAI && disableLocalAuth) {
+  name: 'azure-ai-roles'
+  params: {
+    disableLocalAuth: disableLocalAuth
+    targetUserPrincipal: webApp.identity.principalId
+    cognitiveServicesUserRoleId: cognitiveServicesUserRoleId
+    formRecognizerName: form_recognizer_name
+    searchIndexDataContributorRoleId: searchIndexDataContributorRoleId
+    searchServiceContributorRoleId: searchServiceContributorRoleId
+    searchServiceName: search_name
+  }
+}
+
 resource cosmosDbRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
   name: guid(cosmosDbAccount.id, cosmosDbContributorRoleId, 'role-assignment-cosmosDb')
   scope: cosmosDbAccount
@@ -613,39 +559,6 @@ resource cosmosDbRoleAssignmentOperator 'Microsoft.Authorization/roleAssignments
   }
 }
 
-resource cognitiveServicesRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
-  name: guid(azureopenai.id, cognitiveServicesContributorRoleId, 'role-assignment-cognitiveServices')
-  scope: resourceGroup()
-  properties: {
-    principalId: targetUserPrincipal
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      cognitiveServicesContributorRoleId
-    )
-  }
-}
-
-resource cognitiveServicesOpenAIContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
-  name: guid(azureopenai.id, cognitiveServicesOpenAIContributorRoleId, 'role-assignment-cognitiveServices')
-  scope: azureopenai
-  properties: {
-    principalId: targetUserPrincipal
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      cognitiveServicesOpenAIContributorRoleId
-    )
-  }
-}
-
-resource cognitiveServicesUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
-  name: guid(formRecognizer.id, cognitiveServicesUserRoleId, 'role-assignment-cognitiveServices')
-  scope: resourceGroup()
-  properties: {
-    principalId: targetUserPrincipal
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleId)
-  }
-}
-
 resource storageBlobDataContributorRole 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
   name: guid(storage.id, storageBlobDataContributorRoleId, 'role-assignment-storage')
   scope: storage
@@ -658,25 +571,6 @@ resource storageBlobDataContributorRole 'Microsoft.Authorization/roleAssignments
   }
 }
 
-resource searchServiceContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
-  name: guid(searchService.id, searchServiceContributorRoleId, 'role-assignment-searchService')
-  scope: searchService
-  properties: {
-    principalId: targetUserPrincipal
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', searchServiceContributorRoleId)
-  }
-}
-resource searchServiceIndexDataContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (disableLocalAuth) {
-  name: guid(searchService.id, searchIndexDataContributorRoleId, 'role-assignment-searchService')
-  scope: searchService
-  properties: {
-    principalId: targetUserPrincipal
-    roleDefinitionId: subscriptionResourceId(
-      'Microsoft.Authorization/roleDefinitions',
-      searchIndexDataContributorRoleId
-    )
-  }
-}
 //Special case for cosmosdb
 
 @description('Name of the role definition.')
@@ -714,15 +608,26 @@ resource assignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@20
 }
 
 output url string = 'https://${webApp.properties.defaultHostName}'
+
 output webapp_name string = webapp_name
-output openai_name string = openai_name
-output openai_dalle_name string = openai_dalle_name
 output cosmos_name string = cosmos_name
 output cosmos_endpoint string = cosmosDbAccount.properties.documentEndpoint
 output database_name string = databaseName
 output history_container_name string = historyContainerName
 output config_container_name string = configContainerName
+// output cosmos_endpoint string = ''
+// output database_name string = ''
+// output history_container_name string = ''
+// output config_container_name string = ''
+
 output search_name string = search_name
 output form_recognizer_name string = form_recognizer_name
+// output search_name string = ''
+// output form_recognizer_name string = ''
 output storage_name string = storage_name
+// output storage_name string = ''
 output key_vault_name string = keyVaultName
+output openai_name string = enableOpenAI ? openai.outputs.openai_name : ''
+output openai_dalle_name string = enableDalle ? dalle.outputs.openai_dalle_name : ''
+// output openai_name string = ''
+// output openai_dalle_name string = ''

@@ -1,50 +1,54 @@
-import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
-const requireAuth: string[] = [
-  "/chat",
-  "/api",
-  "/reporting",
-  "/unauthorized",
-  "/persona",
-  "/prompt"
-];
 const requireAdmin: string[] = ["/reporting"];
 
-export async function middleware(request: NextRequest) {
-  const res = NextResponse.next();
+export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (requireAuth.some((path) => pathname.startsWith(path))) {
-    const token = await getToken({
-      req: request,
-    });
+  const base64 = request.headers.get("x-ms-client-principal");
 
-    //check not logged in
-    if (!token) {
-      const url = new URL(`/`, request.url);
-      return NextResponse.redirect(url);
-    }
+  if (pathname === "/") {
+  if (base64) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/chat";
+    return NextResponse.redirect(url);
+  }
+    return NextResponse.next();
+  }
 
-    if (requireAdmin.some((path) => pathname.startsWith(path))) {
-      //check if not authorized
-      if (!token.isAdmin) {
-        const url = new URL(`/unauthorized`, request.url);
-        return NextResponse.rewrite(url);
-      }
+  // All other protected routes: require authentication
+  if (!base64) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  let user: any = {};
+  try {
+    user = JSON.parse(atob(base64));
+  } catch {
+    // malformed header – treat as unauthenticated
+    return NextResponse.redirect(new URL("/", origin));
+  }
+
+  if (requireAdmin.some((path) => pathname.startsWith(path))) {
+    const isAdmin = user?.claims?.some(
+      (claim: any) => claim.typ === "role" && claim.val === "admin"
+    );
+
+    if (!isAdmin) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
   }
 
-  return res;
+  return NextResponse.next();
 }
 
-// note that middleware is not applied to api/auth as this is required to logon (i.e. requires anon access)
 export const config = {
   matcher: [
+    "/",
     "/unauthorized/:path*",
     "/reporting/:path*",
-    "/api/chat:path*",
-    "/api/images:path*",
     "/chat/:path*",
+    "/api/chat/:path*",
+    "/api/images/:path*",
   ],
 };

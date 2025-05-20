@@ -26,13 +26,14 @@ import {
 import { AddFunction } from "./add-function";
 import { EndpointHeader } from "./endpoint-header";
 import { ErrorMessages } from "./error-messages";
+import { useUser } from "@/features/globals/providers";
 
 interface Props {}
 
 export const AddExtension: FC<Props> = (props) => {
   const { isOpened, extension } = useExtensionState();
 
-  const { data } = useSession();
+  const user = useUser();
   const initialState: ServerActionResponse | undefined = undefined;
 
   const [formState, formAction] = useFormState(
@@ -41,9 +42,9 @@ export const AddExtension: FC<Props> = (props) => {
   );
 
   const PublicSwitch = () => {
-    if (data === undefined || data === null) return null;
+    if (user === undefined || user === null) return null;
 
-    if (data?.user?.isAdmin) {
+    if (user?.isAdmin) {
       return (
         <div className="flex items-center space-x-2">
           <Switch name="isPublished" defaultChecked={extension.isPublished} />
@@ -58,8 +59,7 @@ export const AddExtension: FC<Props> = (props) => {
       open={isOpened}
       onOpenChange={(value) => {
         extensionStore.updateOpened(value);
-      }}
-    >
+      }}>
       <SheetContent className="min-w-[680px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Extension</SheetTitle>
@@ -67,8 +67,7 @@ export const AddExtension: FC<Props> = (props) => {
         <form action={formAction} className="flex-1 flex flex-col ">
           <ScrollArea
             className="h-full -mx-6 max-h-[calc(100vh-140px)]"
-            type="always"
-          >
+            type="always">
             <div className="pb-6 px-6 flex gap-8 flex-col">
               <ErrorMessages />
               <input type="hidden" name="id" defaultValue={extension.id} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { FC } from "react";
+import { FC, use } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { ServerActionResponse } from "../common/server-action-response";
 import { Button } from "../ui/button";
@@ -23,6 +23,7 @@ import {
   personaStore,
   usePersonaState,
 } from "./persona-store";
+import { useUser } from "../globals/providers";
 
 interface Props {}
 
@@ -36,12 +37,12 @@ export const AddNewPersona: FC<Props> = (props) => {
     initialState
   );
 
-  const { data } = useSession();
+  const user = useUser();
 
   const PublicSwitch = () => {
-    if (data === undefined || data === null) return null;
+    if (user === undefined || user === null) return null;
 
-    if (data?.user?.isAdmin) {
+    if (user?.isAdmin) {
       return (
         <div className="flex items-center space-x-2">
           <Switch name="isPublished" defaultChecked={persona.isPublished} />
@@ -56,8 +57,7 @@ export const AddNewPersona: FC<Props> = (props) => {
       open={isOpened}
       onOpenChange={(value) => {
         personaStore.updateOpened(value);
-      }}
-    >
+      }}>
       <SheetContent className="min-w-[480px] sm:w-[540px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Persona</SheetTitle>
@@ -65,8 +65,7 @@ export const AddNewPersona: FC<Props> = (props) => {
         <form action={formAction} className="flex-1 flex flex-col">
           <ScrollArea
             className="flex-1 -mx-6 flex max-h-[calc(100vh-140px)]"
-            type="always"
-          >
+            type="always">
             <div className="pb-6 px-6 flex gap-8 flex-col  flex-1">
               <input type="hidden" name="id" defaultValue={persona.id} />
               {formState && formState.status === "OK" ? null : (

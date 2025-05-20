@@ -593,10 +593,8 @@
                 "reserved": true
               },
               "sku": {
-                "name": "P0v3",
-                "tier": "Premium0V3",
-                "size": "P0v3",
-                "family": "Pv3",
+                "name": "F1",
+                "tier": "free",
                 "capacity": 1
               },
               "kind": "linux"

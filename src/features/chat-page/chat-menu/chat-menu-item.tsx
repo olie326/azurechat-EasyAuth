@@ -18,6 +18,7 @@ import {
   DeleteChatThreadByID,
   UpdateChatThreadTitle,
 } from "./chat-menu-service";
+import { useRedirectToPage } from "@/features/common/client-navigation/client-use-redirect-to-page";
 
 interface ChatMenuItemProps {
   href: string;
@@ -40,8 +41,7 @@ export const ChatMenuItem: FC<ChatMenuItemProps> = (props) => {
           path.startsWith(props.href) && props.href !== "/"
             ? "text-primary"
             : ""
-        )}
-      >
+        )}>
         {props.children}
       </Link>
       <DropdownMenu>
@@ -54,23 +54,20 @@ export const ChatMenuItem: FC<ChatMenuItemProps> = (props) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start">
           <DropdownMenuItemWithIcon
-            onClick={async () => await handleAction("bookmark")}
-          >
+            onClick={async () => await handleAction("bookmark")}>
             <BookmarkCheck size={18} />
             <span>
               {props.chatThread.bookmarked ? "Remove bookmark" : "Bookmark"}
             </span>
           </DropdownMenuItemWithIcon>
           <DropdownMenuItemWithIcon
-            onClick={async () => await handleAction("rename")}
-          >
+            onClick={async () => await handleAction("rename")}>
             <Pencil size={18} />
             <span>Rename</span>
           </DropdownMenuItemWithIcon>
           <DropdownMenuSeparator />
           <DropdownMenuItemWithIcon
-            onClick={async () => await handleAction("delete")}
-          >
+            onClick={async () => await handleAction("delete")}>
             <Trash size={18} />
             <span>Delete</span>
           </DropdownMenuItemWithIcon>
@@ -85,6 +82,7 @@ type DropdownAction = "bookmark" | "rename" | "delete";
 const useDropdownAction = (props: { chatThread: ChatThreadModel }) => {
   const { chatThread } = props;
   const [isLoading, setIsLoading] = useState(false);
+  const RedirectToPage = useRedirectToPage();
 
   const handleAction = async (action: DropdownAction) => {
     setIsLoading(true);
@@ -103,6 +101,7 @@ const useDropdownAction = (props: { chatThread: ChatThreadModel }) => {
           window.confirm("Are you sure you want to delete this chat thread?")
         ) {
           await DeleteChatThreadByID(chatThread.id);
+          RedirectToPage("chat");
         }
         break;
     }

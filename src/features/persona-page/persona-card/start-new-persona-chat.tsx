@@ -1,6 +1,6 @@
 "use client";
 
-import { RedirectToChatThread } from "@/features/common/navigation-helpers";
+import { useRedirectToChatThread } from "@/features/common/client-navigation/client-use-redirect-to-chat-page";
 import { showError } from "@/features/globals/global-message-store";
 import { LoadingIndicator } from "@/features/ui/loading";
 import { MessageCircle } from "lucide-react";
@@ -16,6 +16,7 @@ interface Props {
 export const StartNewPersonaChat: FC<Props> = (props) => {
   const { persona } = props;
   const [isLoading, setIsLoading] = useState(false);
+  const RedirectToChatThread = useRedirectToChatThread();
 
   return (
     <Button
@@ -29,8 +30,7 @@ export const StartNewPersonaChat: FC<Props> = (props) => {
           showError(response.errors.map((e) => e.message).join(", "));
         }
         setIsLoading(false);
-      }}
-    >
+      }}>
       {isLoading ? (
         <LoadingIndicator isLoading={isLoading} />
       ) : (

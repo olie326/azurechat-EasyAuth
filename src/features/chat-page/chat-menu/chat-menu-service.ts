@@ -14,7 +14,7 @@ import { ChatThreadModel } from "../chat-services/models";
 
 export const DeleteChatThreadByID = async (chatThreadID: string) => {
   await SoftDeleteChatThreadForCurrentUser(chatThreadID);
-  RedirectToPage("chat");
+  // RedirectToPage("chat");
 };
 
 export const DeleteAllChatThreads = async (): Promise<

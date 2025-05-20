@@ -1,6 +1,6 @@
 "use client";
 
-import { RedirectToChatThread } from "@/features/common/navigation-helpers";
+import { useRedirectToChatThread } from "@/features/common/client-navigation/client-use-redirect-to-chat-page";
 import { LoadingIndicator } from "@/features/ui/loading";
 import { MessageCircle } from "lucide-react";
 import { FC, useState } from "react";
@@ -15,6 +15,7 @@ interface Props {
 export const StartNewExtensionChat: FC<Props> = (props) => {
   const { extension } = props;
   const [isLoading, setIsLoading] = useState(false);
+  const redirectToChat = useRedirectToChatThread();
 
   return (
     <Button
@@ -23,10 +24,9 @@ export const StartNewExtensionChat: FC<Props> = (props) => {
         setIsLoading(true);
         const chat = await CreateChatWithExtension(extension.id);
         if (chat.status === "OK") {
-          RedirectToChatThread(chat.response.id);
+          redirectToChat(chat.response.id);
         }
-      }}
-    >
+      }}>
       {isLoading ? (
         <LoadingIndicator isLoading={isLoading} />
       ) : (

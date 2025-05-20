@@ -1,5 +1,4 @@
 "use client";
-import { RedirectToPage } from "@/features/common/navigation-helpers";
 import { showError } from "@/features/globals/global-message-store";
 import {
   DropdownMenu,
@@ -11,9 +10,11 @@ import { MoreVertical, Trash } from "lucide-react";
 import { useState } from "react";
 import { DropdownMenuItemWithIcon } from "./chat-menu-item";
 import { DeleteAllChatThreads } from "./chat-menu-service";
+import { useRedirectToPage } from "@/features/common/client-navigation/client-use-redirect-to-page";
 
 export const ChatContextMenu = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const RedirectToPage = useRedirectToPage();
 
   const handleAction = async () => {
     if (
@@ -37,7 +38,7 @@ export const ChatContextMenu = () => {
         {isLoading ? (
           <LoadingIndicator isLoading={isLoading} />
         ) : (
-          <MoreVertical size={18} aria-label="Chat Menu Dropdown Menu"/>
+          <MoreVertical size={18} aria-label="Chat Menu Dropdown Menu" />
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="start">

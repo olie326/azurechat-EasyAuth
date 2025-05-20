@@ -9,6 +9,11 @@ param disableLocalAuth bool
 @description('Enables/Disables Private Endpoints for backend Azure resources. If true, it will create a virtual network and subnets to host the private endpoints.')
 param usePrivateEndpoints bool
 
+// Feature toggles
+param enableOpenAI bool
+param enableDalle bool = false
+param enableAzureAI bool
+
 @minLength(1)
 @maxLength(64)
 @description('Name of the the environment which is used to generate a short unique hash used in all resources.')
@@ -69,7 +74,7 @@ param chatGptDeploymentName string = 'gpt-4o'
 param chatGptModelName string = 'gpt-4o'
 param chatGptModelVersion string = '2024-05-13'
 param embeddingDeploymentName string = 'embedding'
-param embeddingDeploymentCapacity int = 120
+param embeddingDeploymentCapacity int = 10
 param embeddingModelName string = 'text-embedding-ada-002'
 
 param dalleDeploymentCapacity int = 1
@@ -77,9 +82,9 @@ param dalleDeploymentName string = 'dall-e-3'
 param dalleModelName string = 'dall-e-3'
 param dalleApiVersion string = '2023-12-01-preview'
 
-param formRecognizerSkuName string = 'S0'
+param formRecognizerSkuName string = 'F0'
 param searchServiceIndexName string = 'azure-chat'
-param searchServiceSkuName string = 'standard'
+param searchServiceSkuName string = 'free'
 
 // TODO: define good default Sku and settings for storage account
 param storageServiceSku object = { name: 'Standard_LRS' }
@@ -134,6 +139,9 @@ module resources 'resources.bicep' = {
     privateEndpointVNetPrefix: privateEndpointVNetPrefix
     privateEndpointSubnetAddressPrefix: privateEndpointSubnetAddressPrefix
     appServiceBackendSubnetAddressPrefix: appServiceBackendSubnetAddressPrefix
+    enableAzureAI: enableAzureAI
+    enableOpenAI: enableOpenAI
+    enableDalle: enableDalle
   }
 }
 

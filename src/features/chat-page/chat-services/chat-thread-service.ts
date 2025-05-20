@@ -3,6 +3,7 @@ import "server-only";
 
 import {
   getCurrentUser,
+  getServerUser,
   userHashedId,
   userSession,
 } from "@/features/auth-page/helpers";
@@ -278,7 +279,7 @@ export const CreateChatThread = async (): Promise<
   try {
     const modelToSave: ChatThreadModel = {
       name: NEW_CHAT_NAME,
-      useName: (await userSession())!.name,
+      useName: (await getServerUser())!.name,
       userId: await userHashedId(),
       id: uniqueId(),
       createdAt: new Date(),
@@ -334,9 +335,28 @@ export const UpdateChatTitle = async (
   }
 };
 
+export type CreateChatResult = { ok: false } | { ok: true; id: string };
 export const CreateChatAndRedirect = async () => {
   const response = await CreateChatThread();
   if (response.status === "OK") {
-    RedirectToChatThread(response.response.id);
+    // RedirectToChatThread(response.response.id);
+    return { ok: true, id: response.response.id } as CreateChatResult;
   }
 };
+
+export type CreateChatState = { ok: false } | { ok: true; id: string };
+
+export async function createChatAction(
+  _prevState: CreateChatState,
+  _formData: FormData
+): Promise<CreateChatState> {
+  try {
+    const res = await CreateChatThread();
+    if (res.status === 'OK') {
+      return { ok: true, id: res.response.id };
+    }
+  } catch {
+    // Handle error
+  }
+  return { ok: false };
+}

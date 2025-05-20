@@ -13,19 +13,20 @@ import { CircleUserRound, LogOut } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Avatar, AvatarImage } from "../ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
+import { useUser } from "../globals/providers";
 
 export const UserProfile = () => {
-  const { data: session } = useSession();
+  const user = useUser();
+  const logout = () => {
+    window.location.href = "/.auth/logout?post_logout_redirect_uri=/";
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {session?.user?.image ? (
+        {user?.image ? (
           <Avatar className="">
-            <AvatarImage
-              src={session?.user?.image!}
-              alt={session?.user?.name!}
-            />
+            <AvatarImage src={user?.image!} alt={user?.name!} />
           </Avatar>
         ) : (
           <CircleUserRound {...menuIconProps} role="button" />
@@ -34,14 +35,12 @@ export const UserProfile = () => {
       <DropdownMenuContent side="right" className="w-56" align="end">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium leading-none">
-              {session?.user?.name}
+            <p className="text-sm font-medium leading-none">{user?.name}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user?.email}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {session?.user?.email}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {session?.user?.isAdmin ? "Admin" : ""}
+              {user?.isAdmin ? "Admin" : ""}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -53,10 +52,7 @@ export const UserProfile = () => {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="flex gap-2"
-          onClick={() => signOut({ callbackUrl: "/" })}
-        >
+        <DropdownMenuItem className="flex gap-2" onClick={() => logout()}>
           <LogOut {...menuIconProps} size={18} />
           <span>Log out</span>
         </DropdownMenuItem>

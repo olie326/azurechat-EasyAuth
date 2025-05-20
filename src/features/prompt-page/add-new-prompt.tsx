@@ -18,6 +18,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { addOrUpdatePrompt, promptStore, usePromptState } from "./prompt-store";
+import { useUser } from "../globals/providers";
 
 interface SliderProps {}
 
@@ -28,12 +29,12 @@ export const AddPromptSlider: FC<SliderProps> = (props) => {
 
   const [formState, formAction] = useFormState(addOrUpdatePrompt, initialState);
 
-  const { data } = useSession();
+  const user = useUser();
 
   const PublicSwitch = () => {
-    if (data === undefined || data === null) return null;
+    if (user === undefined || user === null) return null;
 
-    if (data?.user?.isAdmin) {
+    if (user?.isAdmin) {
       return (
         <div className="flex items-center space-x-2">
           <Switch name="isPublished" defaultChecked={prompt.isPublished} />
@@ -48,8 +49,7 @@ export const AddPromptSlider: FC<SliderProps> = (props) => {
       open={isOpened}
       onOpenChange={(value) => {
         promptStore.updateOpened(value);
-      }}
-    >
+      }}>
       <SheetContent className="min-w-[480px] sm:w-[540px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Persona</SheetTitle>
@@ -57,8 +57,7 @@ export const AddPromptSlider: FC<SliderProps> = (props) => {
         <form action={formAction} className="flex-1 flex flex-col">
           <ScrollArea
             className="flex-1 -mx-6 flex max-h-[calc(100vh-140px)]"
-            type="always"
-          >
+            type="always">
             <div className="pb-6 px-6 flex gap-8 flex-col  flex-1">
               <input type="hidden" name="id" defaultValue={prompt.id} />
               {formState && formState.status === "OK" ? null : (
